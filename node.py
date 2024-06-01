@@ -115,6 +115,6 @@ class DetectAndMask:
             y_max = min(np.max(box[:, 1]) + vertical_padding, mask.shape[0])
             
             # Fill the padded area on the mask
-            cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 255, thickness=-1)
+            cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 1, thickness=-1)
       mask_tensor = torch.from_numpy(mask).unsqueeze(0)
       return (mask_tensor,)

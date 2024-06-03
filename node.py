@@ -37,17 +37,21 @@ class MaskAreaComparisonSegment:
         elif not isinstance(mask, np.ndarray):
             mask = np.asarray(mask)
 
-        # Calculate the total area of the image
-        total_area = image.shape[1] * image.shape[2]
+        # Find the bounding box of the mask
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+        if np.any(rows) and np.any(cols):
+            ymin, ymax = np.where(rows)[0][[0, -1]]
+            xmin, xmax = np.where(cols)[0][[0, -1]]
+        else:
+            return (if_mask_larger,)
 
-        # Calculate the mask's area by counting non-zero pixels
-        mask_area = np.count_nonzero(mask)
-
-        # Calculate % of the image's total area
-        threshold_area = threshold * total_area
+        mask_width = xmax - xmin + 1
+        image_width = image.shape[2]
+        threshold_width = threshold * image_width
 
         # Compare mask area with threshold area
-        if mask_area < threshold_area:
+        if mask_width < threshold_width:
             return (if_mask_smaller,)
         else:
             return (if_mask_larger,)
@@ -93,7 +97,17 @@ class DetectAndMask:
 
   def detect_and_mask(self, images: torch.Tensor, text: str):
     from paddleocr import PaddleOCR
-    ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=True)
+    import os
+    print("cwd: ", os.getcwd())
+    ocr = PaddleOCR(
+       use_angle_cls=False, 
+       lang='en', 
+       use_gpu=True,
+       det_model_dir='/det/en_PP-OCRv3_det_infer/',	
+       rec_model_dir='/rec/en_PP-OCRv4_rec_infer/',
+       cls_model_dir='/cls/ch_ppocr_mobile_v2.0_cls_infer/'
+       )
+    
     for (batch_number, image) in enumerate(images):
       i = 255. * image.cpu().numpy()
       img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))

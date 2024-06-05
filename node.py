@@ -37,24 +37,34 @@ class MaskAreaComparisonSegment:
         elif not isinstance(mask, np.ndarray):
             mask = np.asarray(mask)
 
-        # Find the bounding box of the mask
-        rows = np.any(mask, axis=1)
-        cols = np.any(mask, axis=0)
-        if np.any(rows) and np.any(cols):
-            ymin, ymax = np.where(rows)[0][[0, -1]]
-            xmin, xmax = np.where(cols)[0][[0, -1]]
-        else:
-            return (if_mask_larger,)
+        image_width = image.shape[2]  # Get the width of the image
+        threshold_width = threshold * image_width  # Calculate the threshold width
+        batch_size = mask.shape[0]
 
-        mask_width = xmax - xmin + 1
-        image_width = image.shape[2]
-        threshold_width = threshold * image_width
+        for i in range(batch_size):
+            binary_mask = mask[i]  # Get the mask for the ith batch
+            masked_columns = np.any(binary_mask == 1, axis=0)  # Find columns with at least one masked (1) value
+            masked_width = np.sum(masked_columns)  # Count the number of such columns
+            if masked_width < threshold_width:
+                return (if_mask_smaller,)
+            else:
+                return (if_mask_larger,)
 
-        # Compare mask area with threshold area
-        if mask_width < threshold_width:
-            return (if_mask_smaller,)
-        else:
-            return (if_mask_larger,)
+
+        # # Calculate the total area of the image
+        # total_area = image.shape[1] * image.shape[2]
+
+        # # Calculate the mask's area by counting non-zero pixels
+        # mask_area = np.count_nonzero(mask)
+
+        # # Calculate % of the image's total area
+        # threshold_area = threshold * total_area
+
+        # # Compare mask area with threshold area
+        # if mask_area < threshold_area:
+        #     return (if_mask_smaller,)
+        # else:
+        #     return (if_mask_larger,)
 
 class FillMaskedArea:
     @classmethod
@@ -132,3 +142,22 @@ class DetectAndMask:
             cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 1, thickness=-1)
       mask_tensor = torch.from_numpy(mask).unsqueeze(0)
       return (mask_tensor,)
+    
+
+class CombineTwoImageIntoOne:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image_1": ("IMAGE", {}),
+                "image_2": ("IMAGE", {}),
+            }
+        }
+
+    CATEGORY = "segment_analysis"
+    FUNCTION = "main"
+    RETURN_TYPES = ("IMAGE",)
+
+    def main(self, image_1, image_2):
+        result = torch.cat((image_1, image_2), 2)
+        return (result,)
